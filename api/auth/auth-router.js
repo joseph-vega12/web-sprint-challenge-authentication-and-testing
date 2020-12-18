@@ -27,6 +27,22 @@ const checkUsernameUnique = async (req, res, next) => {
   }
 }
 
+const checkUsernameExists = async (req, res, next) => {
+  // username must be in the db already
+  // we should also tack the user in db to the req object for convenience
+  try {
+    const rows = await Users.findBy({ username: req.body.username })
+    if (rows.length) {
+      req.userData = rows[0]
+      next()
+    } else {
+      res.status(401).json('who is that exactly?')
+    }
+  } catch (err) {
+    res.status(500).json('something failed tragically')
+  }
+}
+
 router.post('/register', checkPayload, checkUsernameUnique, async (req, res) => {
   const credentials = req.body;
 
@@ -78,7 +94,7 @@ router.post('/register', checkPayload, checkUsernameUnique, async (req, res) => 
   */
 });
 
-router.post('/login', checkPayload, (req, res) => {
+router.post('/login', checkPayload, checkUsernameExists, (req, res) => {
   const { username, password } = req.body;
 
   if (isValid(req.body)) {
@@ -137,7 +153,7 @@ function makeToken(user) {
     username: user.username
   }
   const options = {
-    expiresIn: 60 * 30,
+    expiresIn: 1000,
   }
   return jwt.sign(payload, jwtSecret, options)
 }
